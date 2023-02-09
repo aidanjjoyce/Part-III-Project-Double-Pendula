@@ -19,23 +19,27 @@ class Pendulum:
         self.g = 9.81
         self.length = 1.0
         
+        # Calculates the Hamiltonian conjugate momenta p1 and p2 for each of the angles
         self.p1 = (self.m1 + self.m2) * (self.length ** 2) * omega1 + self.m2 * (self.length ** 2) * omega2 * np.cos(self.theta1 - self.theta2)
         self.p2 = self.m2 * (self.length ** 2) * omega2 + self.m2 * (self.length ** 2) * omega1 * np.cos(self.theta1 - self.theta2)
           
         self.Hamiltonian = round(0.5 * (self.m1 + self.m2) * ((self.length * omega1) ** 2) + 0.5 * self.m2 * ((self.length * omega2) ** 2) + self.m2 * (self.length ** 2) * omega1 * omega2 * np.cos(self.theta1 - self.theta2) + self.g * self.length * (self.m1 + self.m2) * (1 - np.cos(self.theta1)) + self.g * self.length * self.m2 * (1 - np.cos(self.theta2)), 2)
-          
+        
+        # List containing the position history of the pendulum masses
         self.trajectory = [self.polar_to_cartesian()]
-  
+    
+    # Returns the Cartesian coordinates of both masses, and the position of the origin
     def polar_to_cartesian(self):
         x1 =  self.length * np.sin(self.theta1)        
         y1 = -self.length * np.cos(self.theta1)
           
         x2 = x1 + self.length * np.sin(self.theta2)
         y2 = y1 - self.length * np.cos(self.theta2)
-         
-        #print(self.theta1, self.theta2)
+        
         return np.array([[0.0, 0.0], [x1, y1], [x2, y2]])
       
+    # Uses Hamilton's equations to evolve the system
+    # by time step dt using a Riemann sum approach to integration
     def evolve(self):
         theta1 = self.theta1
         theta2 = self.theta2
@@ -43,7 +47,8 @@ class Pendulum:
         p2 = self.p2
         g = self.g
         l = self.length
-         
+        
+        # Calculates quantities of relevance in the eoms
         expr1 = np.cos(theta1 - theta2)
         expr2 = np.sin(theta1 - theta2)
         expr3 = (1 + expr2**2)
@@ -51,7 +56,8 @@ class Pendulum:
         expr5 = (p1**2 + 2 * p2**2 - p1 * p2 * expr1) \
         * np.sin(2 * (theta1 - theta2)) / 2 / expr3**2
         expr6 = expr4 - expr5
-         
+        
+        # Updates the variables using the eoms
         self.theta1 += self.dt * (p1 - p2 * expr1) / expr3
         self.theta2 += self.dt * (2 * p2 - p1 * expr1) / expr3
         self.p1 += self.dt * (-2 * g * l * np.sin(theta1) - expr6)
@@ -61,7 +67,9 @@ class Pendulum:
         self.trajectory.append(new_position)
         # self.Hamiltonian = round(0.5 * (self.m1 + self.m2) * ((self.length * omega1) ** 2) + 0.5 * self.m2 * ((self.length * omega2) ** 2) + self.m2 * (self.length ** 2) * omega1 * omega2 * np.cos(self.theta1 - self.theta2) + self.g * self.length * (self.m1 + self.m2) * (1 - np.cos(self.theta1)) + self.g * self.length * self.m2 * (1 - np.cos(self.theta2)), 2)
         return new_position
-        
+    
+    # Generates a dictionary containing n data points containing
+    # the energy and positions at each time step
     def generate_n_data(self, n):
         output_list = [[],[],[],[],[]]
         for i in range(n):
@@ -77,7 +85,7 @@ class Pendulum:
             "Velocity2": output_list[4]}    
         return output_dict
  
- 
+# Is used to animate double pendulum trajectories over time
 class Animator:
     def __init__(self, pendulum, draw_trace=False):
         self.pendulum = pendulum
@@ -133,15 +141,34 @@ class Animator:
         self.animation = animation.FuncAnimation(self.fig, self.update,
                          self.advance_time_step, interval=25, blit=False)
 
-# Plots an animated video of a double pendulum, with the calculated Hamiltonian displayed 
-# pendulum = Pendulum(theta1=random.uniform(-np.pi,np.pi), omega1=random.uniform(-10,10), theta2=random.uniform(-np.pi,np.pi), omega2=random.uniform(-10,10), dt=0.01)
-# animator = Animator(pendulum=pendulum, draw_trace=True)
-# animator.animate()
-# plt.show()
+# Creates an animation of a pendulum with random starting conditions
+def animate_random():
+    pendulum = Pendulum(theta1=random.uniform(-np.pi,np.pi), omega1=random.uniform(-10,10), theta2=random.uniform(-np.pi,np.pi), omega2=random.uniform(-10,10), dt=0.01)
+    animator = Animator(pendulum=pendulum, draw_trace=True)
+    animator.animate()
+    plt.show()
 
-pendulum = Pendulum(theta1=random.uniform(-np.pi,np.pi), omega1=random.uniform(-10,10), theta2=random.uniform(-np.pi,np.pi), omega2=random.uniform(-10,10), dt=0.01)
-data = pendulum.generate_n_data(10)
-data_frame = pd.DataFrame(data)
-print(data_frame)
-with open('test_csv.txt', 'w') as csv_file:
-    data_frame.to_csv(path_or_buf=csv_file)
+# Creates a csv file containing n data points (energy + coords)
+# for m pendula and returns a dictionary of these points
+def n_data_m_pendula(n, m):
+    output_list = [[],[],[],[],[]]
+    for num in range(m):
+        pendulum = Pendulum(theta1=random.uniform(-np.pi,np.pi), omega1=random.uniform(-10,10), theta2=random.uniform(-np.pi,np.pi), omega2=random.uniform(-10,10), dt=0.01)
+        for i in range(n):
+            current_variables = [pendulum.Hamiltonian, pendulum.theta1, pendulum.theta2, pendulum.p1, pendulum.p2]
+            for j in range(5):
+                output_list[j].append(current_variables[j])
+            pendulum.evolve()
+        for k in range(5):
+            output_list[k].append("-----")
+    output_dict = {
+        "Hamiltonian": output_list[0],
+        "Theta1": output_list[1],
+        "Theta2": output_list[2],
+        "Velocity1": output_list[3],
+        "Velocity2": output_list[4]}   
+    data_frame = pd.DataFrame(output_dict)
+    print(data_frame)
+    with open('%d_data_%d_pendula.txt' % (n, m), 'w') as csv_file:
+        data_frame.to_csv(path_or_buf=csv_file)
+    return output_dict
