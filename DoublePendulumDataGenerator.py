@@ -172,3 +172,20 @@ def n_data_m_pendula(n, m):
     with open('%d_data_%d_pendula.txt' % (n, m), 'w') as csv_file:
         data_frame.to_csv(path_or_buf=csv_file)
     return output_dict
+    
+def new_n_data_m_pendula(n,m):
+    output_list = []
+    for num in range(m):
+        current_data = []
+        pendulum = Pendulum(theta1=random.uniform(-np.pi,np.pi), omega1=random.uniform(-10,10), theta2=random.uniform(-np.pi,np.pi), omega2=random.uniform(-10,10), dt=0.01)
+        for i in range(n):
+            current_variables = [pendulum.theta1, pendulum.theta2, pendulum.p1, pendulum.p2]
+            current_data = [*current_data, *current_variables]
+        output_list.append((current_data, [pendulum.Hamiltonian]))
+    data_frame = pd.DataFrame(output_list)
+    print(data_frame)
+    with open('%d_data_%d_pendula.txt' % (n, m), 'w') as csv_file:
+        data_frame.to_csv(path_or_buf=csv_file)
+    return output_list
+    
+new_n_data_m_pendula(10, 100)
